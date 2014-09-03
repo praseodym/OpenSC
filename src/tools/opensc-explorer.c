@@ -621,7 +621,7 @@ static int do_cd(int argc, char **argv)
 		check_ret(r, SC_AC_OP_SELECT, "unable to select DF", current_file);
 		return -1;
 	}
-	if ((file->type != SC_FILE_TYPE_DF) && (card->type != SC_CARD_TYPE_BELPIC_EID)) {
+	if ((file->type != SC_FILE_TYPE_DF) && (card->type != SC_CARD_TYPE_BELPIC_EID) && (card->type != SC_CARD_TYPE_PKIAPPLET)) {
 		printf("Error: file is not a DF.\n");
 		sc_file_free(file);
 		select_current_path_or_die();

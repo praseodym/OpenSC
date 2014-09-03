@@ -25,6 +25,14 @@
 #include "internal.h"
 #include "cardctl.h"
 
+#include <time.h>
+static long t1, t2, tot_read = 0, tot_dur = 0, dur;
+
+#define PKIAPPLET_MAX_FILE_SIZE		65535
+
+/* Used for a trick in select file and read binary */
+static size_t next_idx = (size_t)-1;
+
 static struct sc_atr_table pkiapplet_atrs[] = {
 	{"3b:f8:13:00:00:81:31:fe:45:4a:43:4f:50:76:32:34:31:b7", NULL, NULL,
 	 SC_CARD_TYPE_PKIAPPLET, 0, NULL},
@@ -59,7 +67,8 @@ static int select_pkcs15_app(sc_card_t * card)
 	/* Regular PKCS#15 AID */
 	sc_format_path("A000000063504B43532D3135", &app);
 	app.type = SC_PATH_TYPE_DF_NAME;
-	r = sc_select_file(card, &app, NULL);
+	// sc_select_file doesn't work with our overriden pkiapplet_select_file
+	r =  sc_get_iso7816_driver()->ops->select_file(card, &app, NULL);
 	if (r != SC_SUCCESS) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to select PKCS15 applet");
 		return r;
@@ -94,6 +103,87 @@ static int pkiapplet_init(sc_card_t * card)
 	SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
 }
 
+
+
+static int pkiapplet_select_file(sc_card_t *card,
+			      const sc_path_t *in_path, sc_file_t **file_out)
+{
+	sc_apdu_t apdu;
+	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
+	int r, pathlen;
+	sc_file_t *file = NULL;
+
+	assert(card != NULL && in_path != NULL);
+	memcpy(path, in_path->value, in_path->len);
+	pathlen = in_path->len;
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
+
+	apdu.lc = pathlen;
+	apdu.data = path;
+	apdu.datalen = pathlen;
+
+	apdu.resplen = 0;
+	apdu.le = 0;
+
+	r = sc_transmit_apdu(card, &apdu);
+
+	SC_TEST_RET(card->ctx, SC_LOG_DEBUG_NORMAL, r, "Select File APDU transmit failed");
+
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	if (r)
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, r);
+
+	next_idx = (size_t)-1;		/* reset */
+
+	if (file_out != NULL) {
+		file = sc_file_new();
+		file->path = *in_path;
+		if (pathlen >= 2)
+			file->id = (in_path->value[pathlen - 2] << 8) | in_path->value[pathlen - 1];
+		file->size = PKIAPPLET_MAX_FILE_SIZE;
+		file->shareable = 1;
+		file->ef_structure = SC_FILE_EF_TRANSPARENT;
+		if (pathlen == 2 && memcmp("\x3F\x00", in_path->value, 2) == 0)
+			file->type = SC_FILE_TYPE_DF;
+		else
+			file->type = SC_FILE_TYPE_WORKING_EF;
+		*file_out = file;
+	}
+
+	return 0;
+}
+
+static int pkiapplet_read_binary(sc_card_t *card,
+			      unsigned int idx, u8 * buf, size_t count, unsigned long flags)
+{
+	int r;
+
+	if (next_idx == idx)
+		return 0;	/* File was already read entirely */
+
+	t1 = clock();
+	r = iso_ops->read_binary(card, idx, buf, count, flags);
+	t2 = clock();
+
+	/* If the 'next_idx trick' shouldn't work, we hope this error
+	 * means that an attempt was made to read beyond the file's
+	 * contents, so we'll return 0 to end the loop in sc_read_binary()*/
+	if (r == SC_ERROR_INCORRECT_PARAMETERS)
+		return 0;
+
+	if (r >= 0 && (size_t)r < count)
+		next_idx = idx + (size_t)r;
+
+	dur = t2 - t1;
+	tot_dur += dur;
+	tot_read += r;
+#if 0
+	printf("%d bytes: %d ms - %d bytes total: %d ms\n", r, dur, tot_read, tot_dur);
+#endif
+	return r;
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -105,9 +195,11 @@ static struct sc_card_driver *sc_get_driver(void)
 	pkiapplet_ops.match_card = pkiapplet_match_card;
 	pkiapplet_ops.init = pkiapplet_init;
 
-#if 0
     /* iso7816-4 functions */
     pkiapplet_ops.read_binary   = pkiapplet_read_binary;
+    pkiapplet_ops.select_file   = pkiapplet_select_file;
+
+#if 0
     pkiapplet_ops.write_binary  = NULL;
     pkiapplet_ops.update_binary = pkiapplet_update_binary;
 

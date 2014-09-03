@@ -62,6 +62,7 @@ struct _sc_driver_entry {
 };
 
 static const struct _sc_driver_entry internal_card_drivers[] = {
+	{ "pkiapplet",	(void *(*)(void)) sc_get_pkiapplet_driver },
 	{ "cardos",	(void *(*)(void)) sc_get_cardos_driver },
 	{ "flex",	(void *(*)(void)) sc_get_cryptoflex_driver },
 	{ "cyberflex",	(void *(*)(void)) sc_get_cyberflex_driver },
@@ -97,7 +98,6 @@ static const struct _sc_driver_entry internal_card_drivers[] = {
 	{ "westcos",	(void *(*)(void)) sc_get_westcos_driver },
 	{ "myeid",      (void *(*)(void)) sc_get_myeid_driver },
 	{ "sc-hsm",		(void *(*)(void)) sc_get_sc_hsm_driver },
-	{ "pkiapplet",	(void *(*)(void)) sc_get_pkiapplet_driver },
 #ifdef ENABLE_OPENSSL
 	{ "dnie",       (void *(*)(void)) sc_get_dnie_driver },
 #endif
