@@ -89,7 +89,9 @@ static int pkiapplet_init(sc_card_t * card)
 
 	flags =SC_ALGORITHM_ONBOARD_KEY_GEN
 		 | SC_ALGORITHM_RSA_RAW
-		 | SC_ALGORITHM_RSA_HASH_NONE;
+		 | SC_ALGORITHM_RSA_HASH_NONE
+		 | SC_ALGORITHM_RSA_HASH_SHA1
+		 | SC_ALGORITHM_RSA_HASH_SHA256;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
