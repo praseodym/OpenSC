@@ -105,19 +105,42 @@ static int pkiapplet_init(sc_card_t * card)
 
 
 
-static int pkiapplet_select_file(sc_card_t *card,
-			      const sc_path_t *in_path, sc_file_t **file_out)
+static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t **file_out)
 {
 	sc_apdu_t apdu;
 	u8 pathbuf[SC_MAX_PATH_SIZE], *path = pathbuf;
-	int r, pathlen;
+	int r;
+	unsigned int pathlen, i;
+	char p1;
 	sc_file_t *file = NULL;
 
 	assert(card != NULL && in_path != NULL);
+
+	// Standard says we should have "Path without the MF identifier" (ISO7816-4:2005 Table 39)
+	// but OpenSC always constructs path with MF prefixed (3F00)
+	// TODO: filesystem layout?
+	if (in_path->value[0] == 0x3F && in_path->value[1] == 0x00) {
+		if (in_path->len > 2) {
+			p1 = 0x08;
+			// Strip 3F00 prefix from path value
+			in_path->len = in_path->len - 2;
+			for (i = 0; i < in_path->len; i++) {
+				in_path->value[i] = in_path->value[i+2];
+			}
+		}
+		else {
+			// opensc-explorer selects 3F00; need to request by FID.
+			p1 = 0x00;
+		}
+	}
+	else {
+		p1 = 0x08;
+	}
+
 	memcpy(path, in_path->value, in_path->len);
 	pathlen = in_path->len;
 
-	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, 0x00, 0x0C);
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xA4, p1, 0x0C);
 
 	apdu.lc = pathlen;
 	apdu.data = path;
