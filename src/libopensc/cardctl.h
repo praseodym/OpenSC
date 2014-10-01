@@ -349,6 +349,19 @@ struct sc_cardctl_miocos_ac_info {
 };
 
 /*
+ * PKIapplet AC info
+ */
+struct sc_cardctl_pkiapplet_ac_info {
+	int type;
+	int ref;
+	int max_tries;
+	int enable_ac;		/* only applicable to PINs */
+	u8 key_value[8];
+	int max_unblock_tries;	/* same here */
+	u8 unblock_value[8];	/* and here */
+};
+
+/*
  * Siemens CardOS PIN info
  */
 struct sc_cardctl_cardos_obj_info {

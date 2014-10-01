@@ -209,6 +209,36 @@ static int pkiapplet_read_binary(sc_card_t *card,
 	return r;
 }
 
+static int
+pkiapplet_create_file(struct sc_card *card, sc_file_t *file)
+{
+	int r;
+	size_t len;
+	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
+	struct sc_apdu apdu;
+
+	len = SC_MAX_APDU_BUFFER_SIZE;
+
+	len = 5;
+	sbuf[0] = (file->id >> 8) & 0xFF;
+	sbuf[1] = file->id & 0xFF;
+	sbuf[2] = (file->size >> 8) & 0xFF;
+	sbuf[3] = file->size & 0xFF;
+	sbuf[4] = 0; /* FIXME: PIN protection for reads; 'shareable'? */
+
+	sc_format_apdu(card, &apdu, SC_APDU_CASE_3_SHORT, 0xE0, 0x00, 0x00);
+	apdu.lc = len;
+	apdu.datalen = len;
+	apdu.data = sbuf;
+
+	r = sc_transmit_apdu(card, &apdu);
+	LOG_TEST_RET(card->ctx, r, "APDU transmit failed");
+	r = sc_check_sw(card, apdu.sw1, apdu.sw2);
+	LOG_TEST_RET(card->ctx, r, "Card returned error");
+
+	return r;
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -223,6 +253,7 @@ static struct sc_card_driver *sc_get_driver(void)
     /* iso7816-4 functions */
     pkiapplet_ops.read_binary   = pkiapplet_read_binary;
     pkiapplet_ops.select_file   = pkiapplet_select_file;
+    pkiapplet_ops.create_file   = pkiapplet_create_file;
 
 #if 0
     pkiapplet_ops.write_binary  = NULL;

@@ -34,6 +34,8 @@ static int pkiapplet_detect_card( sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
 
+	printf("\nPKCS15 DETECT PKIAPPLET\n\n");
+
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
 	/* check if we have the correct card OS */
@@ -51,6 +53,8 @@ static int sc_pkcs15emu_pkiapplet_init( sc_pkcs15_card_t *p15card)
 	sc_serial_number_t serial;
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
+	printf("\nPKCS15 INIT PKIAPPLET\n\n");
 
 	/* get serial number */
 	r = sc_card_ctl(card, SC_CARDCTL_GET_SERIALNR, &serial);
@@ -79,6 +83,8 @@ int sc_pkcs15emu_pkiapplet_init_ex(sc_pkcs15_card_t *p15card,
 				  sc_pkcs15emu_opt_t *opts)
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
+	
+	printf("\nPKCS15 INITEX PKIAPPLET\n\n");
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_pkiapplet_init(p15card);
