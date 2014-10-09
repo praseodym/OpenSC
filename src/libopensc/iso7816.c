@@ -749,6 +749,16 @@ iso7816_set_security_env(struct sc_card *card,
 		return SC_ERROR_INVALID_ARGUMENTS;
 	}
 	p = sbuf;
+	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
+		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
+			*p++ = 0x83;
+		else
+			*p++ = 0x84;
+		*p++ = env->key_ref_len;
+		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
+		memcpy(p, env->key_ref, env->key_ref_len);
+		p += env->key_ref_len;
+	}
 	if (env->flags & SC_SEC_ENV_ALG_REF_PRESENT) {
 		*p++ = 0x80;	/* algorithm reference */
 		*p++ = 0x01;
@@ -760,16 +770,6 @@ iso7816_set_security_env(struct sc_card *card,
 		assert(sizeof(sbuf) - (p - sbuf) >= env->file_ref.len);
 		memcpy(p, env->file_ref.value, env->file_ref.len);
 		p += env->file_ref.len;
-	}
-	if (env->flags & SC_SEC_ENV_KEY_REF_PRESENT) {
-		if (env->flags & SC_SEC_ENV_KEY_REF_ASYMMETRIC)
-			*p++ = 0x83;
-		else
-			*p++ = 0x84;
-		*p++ = env->key_ref_len;
-		assert(sizeof(sbuf) - (p - sbuf) >= env->key_ref_len);
-		memcpy(p, env->key_ref, env->key_ref_len);
-		p += env->key_ref_len;
 	}
 	r = p - sbuf;
 	apdu.lc = r;

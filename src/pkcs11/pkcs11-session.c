@@ -261,6 +261,7 @@ CK_RV C_Login(CK_SESSION_HANDLE hSession,	/* the session's handle */
 	slot = session->slot;
 
 	if (!(slot->token_info.flags & CKF_USER_PIN_INITIALIZED) && userType == CKU_USER) {
+		fprintf(stderr,"\n\nXXXXXXX pkcs11-session.c C_Login token_info flags failure\n\n");
 		rv = CKR_USER_PIN_NOT_INITIALIZED;
 		goto out;
 	}

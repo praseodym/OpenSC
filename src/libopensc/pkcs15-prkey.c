@@ -286,6 +286,7 @@ int sc_pkcs15_decode_prkdf_entry(struct sc_pkcs15_card *p15card,
 	}
 
 	if (!p15card->app || !p15card->app->ddo.aid.len)   {
+		sc_log(ctx, "Original PrivKey path '%s'", sc_print_path(&info.path));
 		r = sc_pkcs15_make_absolute_path(&p15card->file_app->path, &info.path);
 		if (r < 0) {
 			sc_pkcs15_free_key_params(&info.params);

@@ -48,7 +48,6 @@
 #include "pkcs11/pkcs11-opensc.h"
 #include "libopensc/asn1.h"
 #include "util.h"
-
 extern void *C_LoadModule(const char *name, CK_FUNCTION_LIST_PTR_PTR);
 extern CK_RV C_UnloadModule(void *module);
 
@@ -387,6 +386,9 @@ int main(int argc, char * argv[])
 	int do_unlock_pin = 0;
 	int action_count = 0;
 	CK_RV rv;
+
+	setbuf(stdout, NULL);
+
 
 #ifdef _WIN32
 	if(_setmode(_fileno(stdout), _O_BINARY ) == -1)

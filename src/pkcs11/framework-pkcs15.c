@@ -231,24 +231,38 @@ get_fw_data(struct sc_pkcs11_card *p11card, struct sc_app_info *app_info, int *o
 		struct pkcs15_fw_data *fw_data = (struct pkcs15_fw_data *) p11card->fws_data[idx];
 		struct sc_file *file_app = NULL;
 
+		fprintf(stderr, "\nYYYYY get_fw_data 1\n");
+
 		if (!fw_data || !fw_data->p15_card)
 			continue;
 
+		fprintf(stderr, "\nYYYYY get_fw_data 2\n");
+
 		file_app = fw_data->p15_card->file_app;
+		/* disable validation for now; does not work with pkiapplet: file_app->path.len=4 and file_app->path.len=2
 		if (app_info && file_app)   {
+			fprintf(stderr, "\nYYYYY get_fw_data 2.1 - %d - %d\n", file_app->path.len, app_info->path.len);
 			if (file_app->path.len != app_info->path.len)
 				continue;
+			fprintf(stderr, "\nYYYYY get_fw_data 2.2\n");
 			if (file_app->path.aid.len != app_info->path.aid.len)
 				continue;
+			fprintf(stderr, "\nYYYYY get_fw_data 2.3\n");
 			if (memcmp(file_app->path.aid.value, app_info->path.aid.value, app_info->path.aid.len))
 				continue;
+			fprintf(stderr, "\nYYYYY get_fw_data 2.4\n");
 			if (memcmp(file_app->path.value, app_info->path.value, app_info->path.len))
 				continue;
-		}
+			fprintf(stderr, "\nYYYYY get_fw_data 2.5\n");
+		}*/
+
+		fprintf(stderr, "\nYYYYY get_fw_data 3\n");
 
 		out = fw_data;
 		if (out_idx)
 			*out_idx = idx;
+
+		fprintf(stderr, "\nYYYYY get_fw_data 4 -- idx %d\n", idx);
 		break;
 	}
 
@@ -1414,6 +1428,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 	sc_log(context, "pkcs15-login: userType 0x%lX, PIN length %li", userType, ulPinLen);
 	switch (userType) {
 	case CKU_USER:
+		fprintf(stderr,"XXXXXXX cku_user login exec");
 		auth_object = slot_data_auth(slot->fw_data);
 		if (auth_object == NULL)
 			return CKR_USER_PIN_NOT_INITIALIZED;
@@ -1455,6 +1470,7 @@ pkcs15_login(struct sc_pkcs11_slot *slot, CK_USER_TYPE userType,
 		 */
 		sc_log(context, "context specific login %d", slot->login_user);
 		if (slot->login_user == CKU_USER) {
+			fprintf(stderr,"XXXXXXX context login exec");
 			auth_object = slot_data_auth(slot->fw_data);
 			if (auth_object == NULL)
 				return CKR_USER_PIN_NOT_INITIALIZED;

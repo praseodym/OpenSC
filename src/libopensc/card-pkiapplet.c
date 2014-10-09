@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "internal.h"
+#include "asn1.h"
 #include "cardctl.h"
 
 #include <time.h>
@@ -68,7 +69,7 @@ static int select_pkcs15_app(sc_card_t * card)
 	sc_format_path("A000000063504B43532D3135", &app);
 	app.type = SC_PATH_TYPE_DF_NAME;
 	// sc_select_file doesn't work with our overriden pkiapplet_select_file
-	r =  sc_get_iso7816_driver()->ops->select_file(card, &app, NULL);
+	r = iso_ops->select_file(card, &app, NULL);
 	if (r != SC_SUCCESS) {
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "unable to select PKCS15 applet");
 		return r;
@@ -87,11 +88,13 @@ static int pkiapplet_init(sc_card_t * card)
 	card->cla  = 0x00;
 	card->drv_data = NULL;
 
-	flags =SC_ALGORITHM_ONBOARD_KEY_GEN
-		 | SC_ALGORITHM_RSA_RAW
-		 | SC_ALGORITHM_RSA_HASH_NONE
-		 | SC_ALGORITHM_RSA_HASH_SHA1
-		 | SC_ALGORITHM_RSA_HASH_SHA256;
+	flags = SC_ALGORITHM_NEED_USAGE
+		  | SC_ALGORITHM_ONBOARD_KEY_GEN
+		  | SC_ALGORITHM_RSA_PAD_NONE
+		  | SC_ALGORITHM_RSA_PAD_PKCS1
+		  | SC_ALGORITHM_RSA_HASH_SHA1
+		  | SC_ALGORITHM_RSA_HASH_SHA256
+		  | SC_ALGORITHM_RSA_HASH_MD5_SHA1;
 
 	_sc_card_add_rsa_alg(card, 1024, flags, 0);
 
@@ -118,6 +121,29 @@ static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t 
 
 	assert(card != NULL && in_path != NULL);
 
+	fprintf(stderr, "\nZZZZZZ SELECT FILE\n\n");
+	if ((in_path->len == 6 && memcmp("\x3f\x00\x50\x15\x00\x00", in_path->value, 6) == 0) ||
+		(in_path->len == 4 && memcmp("\x50\x15\x00\x00", in_path->value, 4) == 0)) {
+		fprintf(stderr, "\nZZZZZZ SELECT FILE A %d\n\n", in_path->len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Select 50150000 not supported, returning success anyway");
+		if (file_out != NULL) {
+			file = sc_file_new();
+			file->path = *in_path;
+			if (pathlen >= 2)
+				file->id = (in_path->value[pathlen - 2] << 8) | in_path->value[pathlen - 1];
+			file->size = PKIAPPLET_MAX_FILE_SIZE;
+			file->shareable = 1;
+			file->ef_structure = SC_FILE_EF_TRANSPARENT;
+			file->type = SC_FILE_TYPE_WORKING_EF;
+			*file_out = file;
+		}
+		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
+	}
+	else {
+		fprintf(stderr, "\nZZZZZZ SELECT FILE B %d\n\n", in_path->len);
+		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "NOT 50150000");
+	}
+
 	// Standard says we should have "Path without the MF identifier" (ISO7816-4:2005 Table 39)
 	// but OpenSC always constructs path with MF prefixed (3F00)
 	// TODO: filesystem layout?
@@ -135,6 +161,10 @@ static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t 
 			p1 = 0x00;
 		}
 	}
+	/*else if (in_path->len == 2 && in_path->value[0] == 0x50 && in_path->value[1] == 0x15) {
+			// opensc-explorer selects 5015; need to request by FID.
+			p1 = 0x00;
+	}*/
 	else {
 		p1 = 0x08;
 	}
@@ -170,7 +200,7 @@ static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t 
 		file->shareable = 1;
 		file->ef_structure = SC_FILE_EF_TRANSPARENT;
 		if (pathlen == 2 && memcmp("\x3F\x00", in_path->value, 2) == 0)
-			file->type = SC_FILE_TYPE_DF;
+			file->type = SC_FILE_TYPE_DF; // actually MF
 		else
 			file->type = SC_FILE_TYPE_WORKING_EF;
 		*file_out = file;
@@ -217,6 +247,8 @@ pkiapplet_create_file(struct sc_card *card, sc_file_t *file)
 	u8 sbuf[SC_MAX_APDU_BUFFER_SIZE];
 	struct sc_apdu apdu;
 
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+
 	len = SC_MAX_APDU_BUFFER_SIZE;
 
 	len = 5;
@@ -239,6 +271,37 @@ pkiapplet_create_file(struct sc_card *card, sc_file_t *file)
 	return r;
 }
 
+static int
+pkiapplet_set_security_env(sc_card_t *card,
+			    sc_security_env_t *env,
+			    int se_num)
+{
+	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
+	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
+		fprintf(stderr, "\nAAAAAAA set_security_env flag -- %d\n\n",env->algorithm_flags);
+
+		env->flags &= ~SC_SEC_ENV_ALG_PRESENT;
+		env->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
+		env->flags &= ~SC_SEC_ENV_FILE_REF_PRESENT;
+		env->flags |= SC_SEC_ENV_KEY_REF_PRESENT;
+		// if (tmp.algorithm != SC_ALGORITHM_RSA) {
+		// 	sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Only RSA algorithm supported.\n");
+		// 	return SC_ERROR_NOT_SUPPORTED;
+		// }
+		env->algorithm_ref = 0x02;
+		env->key_ref_len = 2;
+		env->key_ref[0] = 0x00;
+		env->key_ref[1] = 0x02;
+
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA1)
+			env->algorithm_ref = 0x02;
+		if (env->algorithm_flags & SC_ALGORITHM_RSA_HASH_SHA256)
+			env->algorithm_ref = 0x03;
+		return iso_ops->set_security_env(card, env, se_num);
+	}
+	return iso_ops->set_security_env(card, env, se_num);
+}
+
 static struct sc_card_driver *sc_get_driver(void)
 {
 	struct sc_card_driver *iso_drv = sc_get_iso7816_driver();
@@ -254,6 +317,9 @@ static struct sc_card_driver *sc_get_driver(void)
     pkiapplet_ops.read_binary   = pkiapplet_read_binary;
     pkiapplet_ops.select_file   = pkiapplet_select_file;
     pkiapplet_ops.create_file   = pkiapplet_create_file;
+
+    // pkiapplet_ops.restore_security_env = pkiapplet_restore_security_env;
+    pkiapplet_ops.set_security_env  = pkiapplet_set_security_env;
 
 #if 0
     pkiapplet_ops.write_binary  = NULL;
