@@ -34,7 +34,7 @@ static int pkiapplet_detect_card( sc_pkcs15_card_t *p15card)
 {
 	sc_card_t *card = p15card->card;
 
-	fprintf(stderr, "\nPKCS15 DETECT PKIAPPLET\n\n");
+	//fprintf(stderr, "\nPKCS15 DETECT PKIAPPLET\n\n");
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
@@ -51,7 +51,7 @@ static int sc_pkcs15emu_pkiapplet_init( sc_pkcs15_card_t *p15card)
 
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 
-	fprintf(stderr, "\nPKCS15 INIT PKIAPPLET\n\n");
+	//fprintf(stderr, "\nPKCS15 INIT PKIAPPLET\n\n");
 
 	if (p15card->tokeninfo->label)
 		free(p15card->tokeninfo->label);
@@ -75,7 +75,7 @@ int sc_pkcs15emu_pkiapplet_init_ex(sc_pkcs15_card_t *p15card,
 {
 	SC_FUNC_CALLED(p15card->card->ctx, SC_LOG_DEBUG_VERBOSE);
 	
-	fprintf(stderr, "\nPKCS15 INITEX PKIAPPLET\n\n");
+	//fprintf(stderr, "\nPKCS15 INITEX PKIAPPLET\n\n");
 
 	if (opts && opts->flags & SC_PKCS15EMU_FLAGS_NO_CHECK)
 		return sc_pkcs15emu_pkiapplet_init(p15card);

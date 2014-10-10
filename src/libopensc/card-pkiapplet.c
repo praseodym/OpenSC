@@ -90,6 +90,7 @@ static int pkiapplet_init(sc_card_t * card)
 
 	flags = SC_ALGORITHM_NEED_USAGE
 		  | SC_ALGORITHM_ONBOARD_KEY_GEN
+		  // | SC_ALGORITHM_RSA_RAW
 		  | SC_ALGORITHM_RSA_PAD_NONE
 		  | SC_ALGORITHM_RSA_PAD_PKCS1
 		  | SC_ALGORITHM_RSA_HASH_SHA1
@@ -121,10 +122,10 @@ static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t 
 
 	assert(card != NULL && in_path != NULL);
 
-	fprintf(stderr, "\nZZZZZZ SELECT FILE\n\n");
+	//fprintf(stderr, "\nZZZZZZ SELECT FILE\n\n");
 	if ((in_path->len == 6 && memcmp("\x3f\x00\x50\x15\x00\x00", in_path->value, 6) == 0) ||
 		(in_path->len == 4 && memcmp("\x50\x15\x00\x00", in_path->value, 4) == 0)) {
-		fprintf(stderr, "\nZZZZZZ SELECT FILE A %d\n\n", in_path->len);
+		//fprintf(stderr, "\nZZZZZZ SELECT FILE A %d\n\n", in_path->len);
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "Select 50150000 not supported, returning success anyway");
 		if (file_out != NULL) {
 			file = sc_file_new();
@@ -139,10 +140,10 @@ static int pkiapplet_select_file(sc_card_t *card, sc_path_t *in_path, sc_file_t 
 		}
 		SC_FUNC_RETURN(card->ctx, SC_LOG_DEBUG_VERBOSE, 0);
 	}
-	else {
+	/*else {
 		fprintf(stderr, "\nZZZZZZ SELECT FILE B %d\n\n", in_path->len);
 		sc_debug(card->ctx, SC_LOG_DEBUG_NORMAL, "NOT 50150000");
-	}
+	}*/
 
 	// Standard says we should have "Path without the MF identifier" (ISO7816-4:2005 Table 39)
 	// but OpenSC always constructs path with MF prefixed (3F00)
@@ -278,7 +279,7 @@ pkiapplet_set_security_env(sc_card_t *card,
 {
 	SC_FUNC_CALLED(card->ctx, SC_LOG_DEBUG_VERBOSE);
 	if (env->flags & SC_SEC_ENV_ALG_PRESENT) {
-		fprintf(stderr, "\nAAAAAAA set_security_env flag -- %d\n\n",env->algorithm_flags);
+		//fprintf(stderr, "\nAAAAAAA set_security_env flag -- %d\n\n",env->algorithm_flags);
 
 		env->flags &= ~SC_SEC_ENV_ALG_PRESENT;
 		env->flags |= SC_SEC_ENV_ALG_REF_PRESENT;
